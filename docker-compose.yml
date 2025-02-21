@@ -1,0 +1,49 @@
+version: "3"
+services:
+  database:
+    image: postgres:12
+    container_name: hce-points-database
+    restart: always
+    ports:
+      - 5432:5432
+    volumes:
+      - ./setup-sql:/docker-entrypoint-initdb.d
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+
+  init-database:
+    image: flyway/flyway
+    container_name: init-database
+    entrypoint: ["bash"]
+    command: >
+      -c "
+        /flyway/flyway -url=jdbc:postgresql://database:5432/hcepoints -user=postgres -password=postgres -baselineOnMigrate="true" -table="schema_history_table" -locations="filesystem:hcepoints/ddl" migrate;
+        /flyway/flyway -url=jdbc:postgresql://database:5432/hcepoints -user=postgres -password=postgres -baselineOnMigrate="true" -table="schema_test_data_history_table" -locations="filesystem:hcepoints/test-data" migrate;
+      "
+    volumes:
+      - ./database:/flyway/hcepoints
+    depends_on:
+      - database
+    environment:
+      - FLYWAY_CONNECT_RETRIES=10
+      - FLYWAY_BASELINE_VERSION=0
+
+  server:
+    image: hce-points-server:latest
+    container_name: hce-points-server
+    build: ../hce-training-points-be
+    restart: always
+    ports:
+      - 8000:8000
+    volumes:
+      - ./config/be.json:/home/node/dist/assets/app.config.json
+
+  client:
+    image: hce-points-client:latest
+    container_name: hce-points-client
+    build: ../hce-training-points-fe
+    ports:
+      - "4200:80"
+    restart: unless-stopped
