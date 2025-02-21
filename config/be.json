@@ -1,0 +1,10 @@
+{
+  "postgres": {
+    "user": "postgres",
+    "host": "database",
+    "database": "hcepoints",
+    "password": "postgres",
+    "port": 5432
+  },
+  "kafka": {}
+}
